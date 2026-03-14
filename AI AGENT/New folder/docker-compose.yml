@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16
+    container_name: ai_builder_db
+    environment:
+      POSTGRES_USER: ai_builder
+      POSTGRES_PASSWORD: ai_builder
+      POSTGRES_DB: ai_multi_agent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_builder -d ai_multi_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_builder_backend
+    environment:
+      PROJECT_NAME: "AI Multi-Agent Project Builder API"
+      API_V1_STR: "/api/v1"
+      DATABASE_URL: "postgresql+psycopg2://ai_builder:ai_builder@db:5432/ai_multi_agent"
+      BACKEND_CORS_ORIGINS: "http://localhost:3000"
+      LOG_LEVEL: "INFO"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai_builder_frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: "http://localhost:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+
